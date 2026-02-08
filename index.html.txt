@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EDIC Quiz Generator - Multi-File PDF Question Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+        :root {
+            --color-primary-blue: #1e3a8a;
+            --color-primary-teal: #0d9488;
+            --color-success: #10b981;
+            --color-error: #ef4444;
+            --color-warning: #f59e0b;
+            --color-neutral: #64748b;
+            --gradient-header: linear-gradient(135deg, #1e3a8a 0%, #0d9488 100%);
+            --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            color: #1e293b;
+            background: linear-gradient(135deg, #f8fafc 0%, #e0f2fe 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .app-header {
+            text-align: center;
+            padding: 3rem 2rem;
+            background: var(--gradient-header);
+            color: white;
+            border-radius: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .app-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: var(--shadow-lg);
+            border-radius: 1rem;
+            padding: 2rem;
+        }
+
+        .dropzone {
+            border: 3px dashed var(--color-primary-teal);
+            border-radius: 1rem;
+            padding: 3rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(13, 148, 136, 0.05);
+            position: relative;
+        }
+
+        .dropzone:hover {
+            background: rgba(13, 148, 136, 0.1);
+            transform: scale(1.02);
+        }
+
+        .dropzone.dragover {
+            background: rgba(13, 148, 136, 0.2);
+            border-color: var(--color-success);
+        }
+
+        .file-input-hidden {
+            display: none;
+        }
+
+        .btn {
+            padding: 0.875rem 1.75rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .btn-primary {
+            background: var(--gradient-header);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .file-list {
+            margin-top: 1.5rem;
+            text-align: left;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1rem;
+            background: #f1f5f9;
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+            border-left: 4px solid var(--color-primary-teal);
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: var(--color-primary-blue);
+        }
+
+        .file-size {
+            font-size: 0.875rem;
+            color: var(--color-neutral);
+        }
+
+        .remove-file {
+            background: none;
+            border: none;
+            color: var(--color-error);
+            cursor: pointer;
+            font-size: 1.25rem;
+            padding: 0.25rem;
+        }
+
+        .progress-container {
+            margin: 1rem 0;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 1rem;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--gradient-header);
+            transition: width 0.4s ease;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .stat-card {
+            padding: 1.5rem;
+            text-align: center;
+            background: white;
+            border-radius: 0.75rem;
+            border: 2px solid #e2e8f0;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--color-primary-blue);
+        }
+
+        .extraction-log {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #f8fafc;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+            font-family: monospace;
+            font-size: 0.875rem;
+        }
+
+        .log-entry {
+            padding: 0.25rem 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .question-card {
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+
+        .clinical-vignette {
+            background: #f1f5f9;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            margin: 1.5rem 0;
+            border-left: 4px solid var(--color-primary-teal);
+        }
+
+        .answer-options {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .option-button {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.25rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 0.75rem;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: left;
+            width: 100%;
+        }
+
+        .option-button:hover:not(.disabled) {
+            border-color: var(--color-primary-teal);
+            background: #f0fdfa;
+        }
+
+        .option-button.selected {
+            border-color: var(--color-primary-teal);
+            background: #ccfbf1;
+        }
+
+        .option-button.correct {
+            border-color: var(--color-success);
+            background: #d1fae5;
+        }
+
+        .option-button.incorrect {
+            border-color: var(--color-error);
+            background: #fee2e2;
+        }
+
+        .option-button.disabled {
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .feedback-panel {
+            margin-top: 2rem;
+            padding: 2rem;
+            border-radius: 0.75rem;
+        }
+
+        .feedback-panel.correct {
+            background: #d1fae5;
+            border: 2px solid var(--color-success);
+        }
+
+        .feedback-panel.incorrect {
+            background: #fee2e2;
+            border: 2px solid var(--color-error);
+        }
+
+        .badge {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .badge.easy { background: #d1fae5; color: #065f46; }
+        .badge.moderate { background: #fed7aa; color: #92400e; }
+        .badge.hard { background: #fecaca; color: #991b1b; }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .spinner {
+            border: 4px solid rgba(13, 148, 136, 0.1);
+            border-top-color: var(--color-primary-teal);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 1rem auto;
+        }
+
+        .topic-tag {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background: #e0f2fe;
+            color: var(--color-primary-blue);
+            border-radius: 1rem;
+            font-size: 0.875rem;
+            margin: 0.25rem;
+        }
+
+        .error-message {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+            border-left: 4px solid var(--color-error);
+        }
+
+        .success-message {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+            border-left: 4px solid var(--color-success);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="app-header">
+            <h1 class="app-title">📚 EDIC Quiz Generator</h1>
+            <p>Upload multiple PDF files to generate contextual MCQs from your study materials</p>
+        </div>
+
+        <!-- Upload Screen -->
+        <div id="uploadScreen" class="glass-effect">
+            <div class="dropzone" id="dropzone">
+                <div style="font-size: 4rem; margin-bottom: 1rem;">📁</div>
+                <h2>Upload Study Materials</h2>
+                <p>Drag & drop multiple PDF files or click to browse</p>
+                <p style="font-size: 0.875rem; color: var(--color-neutral); margin-top: 0.5rem;">
+                    Supports multiple files • Max 50MB each • PDF format only
+                </p>
+                <input type="file" id="fileInput" accept=".pdf" multiple class="file-input-hidden">
+                <label for="fileInput" class="btn btn-primary" style="margin-top: 1rem;">
+                    📄 Select PDF Files
+                </label>
+            </div>
+
+            <div id="fileList" class="file-list hidden"></div>
+
+            <div id="extractionSection" class="hidden" style="margin-top: 2rem;">
+                <h3>📖 Text Extraction Progress</h3>
+                <div class="progress-container">
+                    <div class="progress-bar-container">
+                        <div id="extractionBar" class="progress-bar-fill" style="width: 0%;"></div>
+                    </div>
+                    <p id="extractionText" style="text-align: center; margin-top: 0.5rem; color: var(--color-neutral);">
+                        Ready to extract
+                    </p>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalPages">0</div>
+                        <div style="color: var(--color-neutral); font-size: 0.875rem;">Total Pages</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="extractedChars">0</div>
+                        <div style="color: var(--color-neutral); font-size: 0.875rem;">Characters</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="keyConcepts">0</div>
+                        <div style="color: var(--color-neutral); font-size: 0.875rem;">Key Concepts</div>
+                    </div>
+                </div>
+                <div id="extractionLog" class="extraction-log hidden"></div>
+            </div>
+
+            <div id="actionButtons" class="hidden" style="text-align: center; margin-top: 2rem;">
+                <button class="btn btn-primary" onclick="startExtraction()" id="extractBtn" style="font-size: 1.125rem; padding: 1rem 2rem;">
+                    🚀 Extract & Generate Quiz
+                </button>
+            </div>
+
+            <div id="uploadError" class="error-message hidden"></div>
+        </div>
+
+        <!-- Processing Screen -->
+        <div id="processingScreen" class="glass-effect hidden" style="text-align: center; padding: 4rem;">
+            <div class="spinner"></div>
+            <h3>Processing Your Study Materials...</h3>
+            <p id="processingText">Analyzing text and generating questions using NLP</p>
+            <div class="progress-bar-container" style="max-width: 400px; margin: 2rem auto;">
+                <div id="processingBar" class="progress-bar-fill" style="width: 0%;"></div>
+            </div>
+        </div>
+
+        <!-- Quiz Screen -->
+        <div id="quizScreen" class="hidden">
+            <div style="background: white; padding: 1rem; border-radius: 0.75rem; margin-bottom: 2rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span style="font-weight: 600;">Question <span id="currentQ">1</span>/30</span>
+                    <span style="font-weight: 600;">Score: <span id="scoreDisplay">0</span>/30</span>
+                </div>
+                <div class="progress-bar-container">
+                    <div id="progressBar" class="progress-bar-fill" style="width: 3.33%;"></div>
+                </div>
+            </div>
+
+            <div id="questionCard" class="question-card glass-effect"></div>
+        </div>
+
+        <!-- Results Screen -->
+        <div id="resultsScreen" class="hidden"></div>
+    </div>
+
+    <script>
+        // Initialize PDF.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // Global State
+        let uploadedFiles = [];
+        let extractedTexts = [];
+        let combinedText = '';
+        let questions = [];
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let failedQuestions = [];
+        let selectedAnswer = null;
+        let keyConcepts = [];
+
+        // Medical terminology for better distractor generation
+        const medicalTerms = {
+            cardiovascular: ['myocardial infarction', 'arrhythmia', 'hypertension', 'hypotension', 'cardiac output', 'stroke volume', 'ejection fraction', 'preload', 'afterload', 'contractility'],
+            respiratory: ['ARDS', 'COPD', 'mechanical ventilation', 'PEEP', 'tidal volume', 'plateau pressure', 'driving pressure', 'compliance', 'resistance', 'dead space'],
+            renal: ['acute kidney injury', 'chronic kidney disease', 'dialysis', 'creatinine', 'BUN', 'glomerular filtration rate', 'tubular necrosis', 'acidosis', 'electrolyte imbalance'],
+            neurological: ['Glasgow Coma Scale', 'intracranial pressure', 'cerebral perfusion pressure', 'seizure', 'stroke', 'subarachnoid hemorrhage', 'herniation', 'neuroprotection'],
+            infectious: ['sepsis', 'septic shock', 'bacteremia', 'antibiotic resistance', 'source control', 'cultures', 'procalcitonin', 'C-reactive protein', 'qSOFA', 'lactate'],
+            gastrointestinal: ['acute pancreatitis', 'liver failure', 'variceal bleeding', 'hepatic encephalopathy', 'abdominal compartment syndrome', 'mesenteric ischemia', 'ileus']
+        };
+
+        // Setup event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            setupFileUpload();
+        });
+
+        function setupFileUpload() {
+            const dropzone = document.getElementById('dropzone');
+            const fileInput = document.getElementById('fileInput');
+
+            dropzone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropzone.classList.add('dragover');
+            });
+
+            dropzone.addEventListener('dragleave', () => {
+                dropzone.classList.remove('dragover');
+            });
+
+            dropzone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropzone.classList.remove('dragover');
+                const files = Array.from(e.dataTransfer.files).filter(f => f.type === 'application/pdf');
+                handleFiles(files);
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                const files = Array.from(e.target.files);
+                handleFiles(files);
+            });
+        }
+
+        function handleFiles(files) {
+            const validFiles = files.filter(file => {
+                if (file.type !== 'application/pdf') {
+                    showError(`"${file.name}" is not a PDF file`);
+                    return false;
+                }
+                if (file.size > 50 * 1024 * 1024) {
+                    showError(`"${file.name}" exceeds 50MB limit`);
+                    return false;
+                }
+                return true;
+            });
+
+            validFiles.forEach(file => {
+                if (!uploadedFiles.find(f => f.name === file.name)) {
+                    uploadedFiles.push(file);
+                }
+            });
+
+            updateFileList();
+            document.getElementById('actionButtons').classList.remove('hidden');
+            document.getElementById('extractionSection').classList.remove('hidden');
+            hideError();
+        }
+
+        function updateFileList() {
+            const fileList = document.getElementById('fileList');
+            if (uploadedFiles.length === 0) {
+                fileList.classList.add('hidden');
+                return;
+            }
+
+            fileList.innerHTML = uploadedFiles.map((file, index) => `
+                <div class="file-item">
+                    <div>
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-size">${(file.size / 1024 / 1024).toFixed(2)} MB</div>
+                    </div>
+                    <button class="remove-file" onclick="removeFile(${index})" title="Remove file">×</button>
+                </div>
+            `).join('');
+
+            fileList.classList.remove('hidden');
+        }
+
+        function removeFile(index) {
+            uploadedFiles.splice(index, 1);
+            updateFileList();
+            if (uploadedFiles.length === 0) {
+                document.getElementById('actionButtons').classList.add('hidden');
+                document.getElementById('extractionSection').classList.add('hidden');
+            }
+        }
+
+        async function startExtraction() {
+            const btn = document.getElementById('extractBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner" style="width: 20px; height: 20px; display: inline-block; margin: 0; vertical-align: middle;"></div> Processing...';
+
+            document.getElementById('extractionLog').classList.remove('hidden');
+            extractedTexts = [];
+            combinedText = '';
+            let totalPages = 0;
+            let totalChars = 0;
+
+            for (let i = 0; i < uploadedFiles.length; i++) {
+                const file = uploadedFiles[i];
+                logExtraction(`Processing: ${file.name}...`);
+
+                try {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                    const numPages = pdf.numPages;
+                    totalPages += numPages;
+
+                    let fileText = '';
+                    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+                        const page = await pdf.getPage(pageNum);
+                        const textContent = await page.getTextContent();
+                        const pageText = textContent.items.map(item => item.str).join(' ');
+                        fileText += pageText + ' ';
+
+                        const progress = ((i * numPages + pageNum) / (uploadedFiles.length * numPages)) * 100;
+                        document.getElementById('extractionBar').style.width = `${progress}%`;
+                        document.getElementById('extractionText').textContent = 
+                            `Processing ${file.name} - Page ${pageNum}/${numPages}`;
+                    }
+
+                    extractedTexts.push({
+                        filename: file.name,
+                        text: fileText,
+                        pages: numPages
+                    });
+
+                    combinedText += fileText + ' ';
+                    totalChars += fileText.length;
+                    logExtraction(`✓ Extracted ${numPages} pages from ${file.name}`);
+
+                } catch (error) {
+                    logExtraction(`✗ Error processing ${file.name}: ${error.message}`);
+                }
+            }
+
+            document.getElementById('totalPages').textContent = totalPages;
+            document.getElementById('extractedChars').textContent = totalChars.toLocaleString();
+
+            // Extract key concepts using NLP
+            logExtraction('Analyzing content and extracting key concepts...');
+            keyConcepts = extractKeyConcepts(combinedText);
+            document.getElementById('keyConcepts').textContent = keyConcepts.length;
+
+            logExtraction(`✓ Found ${keyConcepts.length} key concepts`);
+            logExtraction('Generating quiz questions...');
+
+            // Generate questions
+            setTimeout(() => {
+                generateQuestionsFromContent();
+            }, 500);
+        }
+
+        function logExtraction(message) {
+            const log = document.getElementById('extractionLog');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function extractKeyConcepts(text) {
+            const concepts = new Set();
+            
+            // Extract sentences that contain medical terms
+            const sentences = text.match(/[^.!?]+[.!?]+/g) || [];
+            
+            // Look for definition patterns
+            const definitionPatterns = [
+                /([A-Z][a-z]+(?:\s+[a-z]+){0,5})\s+(?:is|are|refers to|defined as|characterized by)/gi,
+                /([A-Z][a-z]+(?:\s+[a-z]+){0,5})\s+(?:means|indicates|signifies)/gi,
+                /(?:called|termed|known as)\s+([A-Z][a-z]+(?:\s+[a-z]+){0,5})/gi
+            ];
+
+            definitionPatterns.forEach(pattern => {
+                let match;
+                while ((match = pattern.exec(text)) !== null) {
+                    const concept = match[1].trim();
+                    if (concept.length > 3 && concept.length < 50) {
+                        concepts.add(concept);
+                    }
+                }
+            });
+
+            // Extract medical terms from our database found in text
+            Object.values(medicalTerms).flat().forEach(term => {
+                if (text.toLowerCase().includes(term.toLowerCase())) {
+                    concepts.add(term);
+                }
+            });
+
+            // Extract capitalized phrases (likely proper nouns/medical terms)
+            const capitalizedPattern = /[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+/g;
+            let match;
+            while ((match = capitalizedPattern.exec(text)) !== null) {
+                if (match[0].length > 3 && match[0].length < 40) {
+                    concepts.add(match[0]);
+                }
+            }
+
+            // Extract numbers with units (lab values, measurements)
+            const measurementPattern = /\d+(?:\.\d+)?\s*(?:mg|mcg|mmol|mEq|mmHg|cmH2O|ml|kg|mm|cm)/gi;
+            while ((match = measurementPattern.exec(text)) !== null) {
+                concepts.add(match[0]);
+            }
+
+            return Array.from(concepts).slice(0, 100); // Limit to top 100
+        }
+
+        function generateQuestionsFromContent() {
+            document.getElementById('uploadScreen').classList.add('hidden');
+            document.getElementById('processingScreen').classList.remove('hidden');
+
+            const sentences = combinedText.match(/[^.!?]+[.!?]+/g) || [];
+            const substantialSentences = sentences.filter(s => s.length > 60 && s.length < 300);
+            
+            questions = [];
+            let questionId = 1;
+
+            // Generate 30 questions using different strategies
+            const strategies = [
+                { method: generateDefinitionQuestion, count: 8 },
+                { method: generateScenarioQuestion, count: 7 },
+                { method: generateComparisonQuestion, count: 5 },
+                { method: generateNumericalQuestion, count: 5 },
+                { method: generateCauseEffectQuestion, count: 5 }
+            ];
+
+            strategies.forEach(strategy => {
+                for (let i = 0; i < strategy.count && questions.length < 30; i++) {
+                    const question = strategy.method(substantialSentences, questionId++);
+                    if (question) questions.push(question);
+                }
+            });
+
+            // If we don't have enough questions, fill with generic ones based on content
+            while (questions.length < 30) {
+                const question = generateGenericQuestion(substantialSentences, questionId++);
+                if (question) questions.push(question);
+            }
+
+            // Shuffle questions
+            questions = questions.sort(() => 0.5 - Math.random()).slice(0, 30);
+            
+            // Assign numbers and difficulty
+            questions.forEach((q, idx) => {
+                q.number = idx + 1;
+                q.difficulty = idx < 6 ? 'Easy' : idx < 21 ? 'Moderate' : 'Hard';
+            });
+
+            // Simulate processing delay
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 10;
+                document.getElementById('processingBar').style.width = `${progress}%`;
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        document.getElementById('processingScreen').classList.add('hidden');
+                        document.getElementById('quizScreen').classList.remove('hidden');
+                        displayQuestion();
+                    }, 500);
+                }
+            }, 200);
+        }
+
+        function generateDefinitionQuestion(sentences, id) {
+            // Find sentences with definitions
+            const definitionPatterns = [
+                /(.+?)\s+is\s+(?:defined as|characterized by|a type of|a condition|a syndrome)/i,
+                /(.+?)\s+refers to\s+(.+)/i,
+                /The\s+(.+?)\s+is\s+(.+)/i
+            ];
+
+            for (let sentence of sentences) {
+                for (let pattern of definitionPatterns) {
+                    const match = sentence.match(pattern);
+                    if (match) {
+                        const term = match[1].trim();
+                        const definition = match[2] ? match[2].trim() : sentence;
+                        
+                        if (term.length > 5 && term.length < 60 && !term.includes('?')) {
+                            return createMCQ(
+                                id,
+                                `What is the definition of ${term}?`,
+                                sentence,
+                                generateDistractors(term, 'definition'),
+                                sentence,
+                                'Easy'
+                            );
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        function generateScenarioQuestion(sentences, id) {
+            // Look for clinical scenario patterns
+            const scenarioSentences = sentences.filter(s => 
+                /\b(patient|male|female|year-old|admitted|presents|complains)\b/i.test(s)
+            );
+
+            if (scenarioSentences.length === 0) return null;
+
+            const sentence = scenarioSentences[Math.floor(Math.random() * scenarioSentences.length)];
+            
+            // Extract key medical concept from sentence
+            let keyConcept = '';
+            for (let category of Object.values(medicalTerms)) {
+                for (let term of category) {
+                    if (sentence.toLowerCase().includes(term.toLowerCase())) {
+                        keyConcept = term;
+                        break;
+                    }
+                }
+                if (keyConcept) break;
+            }
+
+            if (!keyConcept) {
+                // Extract any capitalized medical term
+                const match = sentence.match(/([A-Z][a-z]+(?:\s+[a-z]+){1,3})/);
+                if (match) keyConcept = match[1];
+            }
+
+            if (keyConcept) {
+                return createMCQ(
+                    id,
+                    `Based on this clinical scenario, what is the most likely diagnosis or next step?`,
+                    sentence,
+                    generateDistractors(keyConcept, 'scenario'),
+                    keyConcept,
+                    'Moderate'
+                );
+            }
+
+            return null;
+        }
+
+        function generateComparisonQuestion(sentences, id) {
+            // Look for comparison patterns
+            const comparisonPatterns = [
+                /(.+?)\s+(?:compared to|versus|vs\.?)\s+(.+?)(?:,|\.|is|are)/i,
+                /(.+?)\s+(?:more|less|higher|lower|better|worse)\s+than\s+(.+?)(?:,|\.|is|are)/i,
+                /(?:difference between|distinguish)\s+(.+?)\s+and\s+(.+)/i
+            ];
+
+            for (let sentence of sentences) {
+                for (let pattern of comparisonPatterns) {
+                    const match = sentence.match(pattern);
+                    if (match) {
+                        const concept1 = match[1].trim();
+                        const concept2 = match[2].trim();
+                        
+                        return createMCQ(
+                            id,
+                            `What is the key difference between ${concept1} and ${concept2}?`,
+                            sentence,
+                            [
+                                `${concept1} is acute while ${concept2} is chronic`,
+                                `${concept1} affects the heart while ${concept2} affects the lungs`,
+                                `${concept1} is reversible while ${concept2} is permanent`,
+                                `There is no significant difference`
+                            ],
+                            sentence,
+                            'Hard'
+                        );
+                    }
+                }
+            }
+            return null;
+        }
+
+        function generateNumericalQuestion(sentences, id) {
+            // Look for numerical values
+            const numberPattern = /(\d+(?:\.\d+)?)\s*(mg|mcg|mmol|mEq|mmHg|cmH2O|ml|kg|mm|cm|%)/gi;
+            const matches = [];
+            let match;
+
+            for (let sentence of sentences) {
+                while ((match = numberPattern.exec(sentence)) !== null) {
+                    matches.push({
+                        value: match[0],
+                        sentence: sentence,
+                        number: parseFloat(match[1]),
+                        unit: match[2]
+                    });
+                }
+            }
+
+            if (matches.length === 0) return null;
+
+            const selected = matches[Math.floor(Math.random() * matches.length)];
+            
+            return createMCQ(
+                id,
+                `What is the normal range or appropriate value for ${selected.sentence.split(' ').slice(0, 5).join(' ')}...?`,
+                selected.sentence,
+                [
+                    `${(selected.number * 0.5).toFixed(1)} ${selected.unit}`,
+                    `${selected.number} ${selected.unit}`,
+                    `${(selected.number * 1.5).toFixed(1)} ${selected.unit}`,
+                    `${(selected.number * 2).toFixed(1)} ${selected.unit}`
+                ],
+                `${selected.number} ${selected.unit}`,
+                'Moderate'
+            );
+        }
+
+        function generateCauseEffectQuestion(sentences, id) {
+            // Look for cause-effect patterns
+            const causePatterns = [
+                /(.+?)\s+(?:causes?|leads? to|results? in|produces?)\s+(.+)/i,
+                /(.+?)\s+(?:is caused by|results from|is due to)\s+(.+)/i,
+                /because\s+(.+?),\s+(.+)/i
+            ];
+
+            for (let sentence of sentences) {
+                for (let pattern of causePatterns) {
+                    const match = sentence.match(pattern);
+                    if (match) {
+                        const cause = match[1].trim();
+                        const effect = match[2].trim();
+
+                        return createMCQ(
+                            id,
+                            `What is the relationship between ${cause.substring(0, 40)} and ${effect.substring(0, 40)}?`,
+                            sentence,
+                            [
+                                `${cause} causes ${effect}`,
+                                `${cause} prevents ${effect}`,
+                                `${cause} is unrelated to ${effect}`,
+                                `${effect} causes ${cause}`
+                            ],
+                            sentence,
+                            'Moderate'
+                        );
+                    }
+                }
+            }
+            return null;
+        }
+
+        function generateGenericQuestion(sentences, id) {
+            if (sentences.length === 0) return null;
+            
+            const sentence = sentences[Math.floor(Math.random() * sentences.length)];
+            const words = sentence.split(' ').filter(w => w.length > 4);
+            
+            if (words.length < 5) return null;
+
+            const keyWord = words[Math.floor(Math.random() * words.length)].replace(/[.,!?;:]$/, '');
+            
+            return createMCQ(
+                id,
+                `Regarding ${keyWord}, which statement is correct?`,
+                sentence,
+                generateDistractors(keyWord, 'generic'),
+                sentence,
+                'Easy'
+            );
+        }
+
+        function createMCQ(id, questionText, vignette, options, correctAnswer, difficulty) {
+            // Ensure we have 4 options
+            while (options.length < 4) {
+                options.push(`Option ${options.length + 1}`);
+            }
+
+            // Shuffle options
+            const shuffled = options.slice(0, 4).sort(() => 0.5 - Math.random());
+            const correctLetter = ['A', 'B', 'C', 'D'][shuffled.indexOf(correctAnswer) || 0];
+
+            return {
+                id: id,
+                number: id,
+                type: 'A',
+                difficulty: difficulty,
+                topic: detectTopic(vignette),
+                vignette: vignette.substring(0, 300) + (vignette.length > 300 ? '...' : ''),
+                questionText: questionText,
+                options: shuffled.map((opt, idx) => ({
+                    letter: ['A', 'B', 'C', 'D'][idx],
+                    text: opt
+                })),
+                correctAnswer: correctLetter,
+                explanation: `Based on the extracted text: "${vignette.substring(0, 200)}..." The correct answer is supported by the study material content.`,
+                reference: 'Extracted from uploaded study materials'
+            };
+        }
+
+        function generateDistractors(correctAnswer, type) {
+            // Generate plausible wrong answers based on type
+            const distractors = [];
+            
+            if (type === 'definition') {
+                distractors.push(
+                    `A condition unrelated to ${correctAnswer}`,
+                    `The opposite of ${correctAnswer}`,
+                    `A rare variant of ${correctAnswer}`
+                );
+            } else if (type === 'scenario') {
+                distractors.push(
+                    'Observation only',
+                    'Immediate surgical intervention',
+                    'Discharge with outpatient follow-up',
+                    'Palliative care consultation'
+                );
+            } else {
+                distractors.push(
+                    'Not mentioned in the text',
+                    'Contradicted by the evidence',
+                    'Only applicable in pediatric patients'
+                );
+            }
+
+            // Add the correct answer and shuffle
+            const allOptions = [...distractors, correctAnswer].slice(0, 4);
+            return allOptions.sort(() => 0.5 - Math.random());
+        }
+
+        function detectTopic(text) {
+            const lower = text.toLowerCase();
+            for (let [topic, terms] of Object.entries(medicalTerms)) {
+                for (let term of terms) {
+                    if (lower.includes(term.toLowerCase())) {
+                        return topic.charAt(0).toUpperCase() + topic.slice(1);
+                    }
+                }
+            }
+            return 'General Medicine';
+        }
+
+        function displayQuestion() {
+            const question = questions[currentQuestionIndex];
+            const questionCard = document.getElementById('questionCard');
+
+            document.getElementById('currentQ').textContent = currentQuestionIndex + 1;
+            document.getElementById('progressBar').style.width = `${((currentQuestionIndex + 1) / 30) * 100}%`;
+
+            questionCard.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <div>
+                        <span class="badge ${question.difficulty.toLowerCase()}">${question.difficulty}</span>
+                        <span class="topic-tag">${question.topic}</span>
+                    </div>
+                    <span style="font-weight: 600; color: var(--color-neutral);">Q${question.number}/30</span>
+                </div>
+
+                <div class="clinical-vignette">
+                    <p><strong>Source Context:</strong></p>
+                    <p>${question.vignette}</p>
+                </div>
+
+                <div style="font-size: 1.25rem; font-weight: 600; margin: 1.5rem 0; color: var(--color-primary-blue);">
+                    ${question.questionText}
+                </div>
+
+                <div class="answer-options">
+                    ${question.options.map(opt => `
+                        <button class="option-button" onclick="selectAnswer('${opt.letter}')" data-letter="${opt.letter}">
+                            <span style="font-weight: 700; font-size: 1.125rem; color: var(--color-primary-blue); min-width: 30px;">${opt.letter})</span>
+                            <span>${opt.text}</span>
+                        </button>
+                    `).join('')}
+                </div>
+
+                <button id="submitBtn" class="btn btn-primary" style="width: 100%; margin-top: 1.5rem;" disabled onclick="submitAnswer()">
+                    Submit Answer
+                </button>
+            `;
+        }
+
+        function selectAnswer(letter) {
+            selectedAnswer = letter;
+            
+            document.querySelectorAll('.option-button').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            
+            const selectedBtn = document.querySelector(`[data-letter="${letter}"]`);
+            if (selectedBtn) {
+                selectedBtn.classList.add('selected');
+            }
+            
+            document.getElementById('submitBtn').disabled = false;
+        }
+
+        function submitAnswer() {
+            const question = questions[currentQuestionIndex];
+            const isCorrect = selectedAnswer === question.correctAnswer;
+            
+            if (isCorrect) {
+                score++;
+            } else {
+                failedQuestions.push({
+                    ...question,
+                    userAnswer: selectedAnswer
+                });
+            }
+
+            document.getElementById('scoreDisplay').textContent = score;
+
+            // Disable all options
+            document.querySelectorAll('.option-button').forEach(btn => {
+                btn.classList.add('disabled');
+                btn.onclick = null;
+                if (btn.dataset.letter === question.correctAnswer) {
+                    btn.classList.add('correct');
+                } else if (btn.dataset.letter === selectedAnswer && !isCorrect) {
+                    btn.classList.add('incorrect');
+                }
+            });
+
+            document.getElementById('submitBtn').remove();
+
+            // Show feedback
+            const feedbackHTML = `
+                <div class="feedback-panel ${isCorrect ? 'correct' : 'incorrect'}">
+                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
+                        <div style="font-size: 2.5rem;">${isCorrect ? '✓' : '✗'}</div>
+                        <h3 style="font-size: 1.5rem; font-weight: 700;">${isCorrect ? 'Correct!' : 'Incorrect'}</h3>
+                    </div>
+
+                    <div style="margin: 1rem 0; padding: 1rem; background: white; border-radius: 0.5rem;">
+                        <p><strong>Your Answer:</strong> ${selectedAnswer}</p>
+                        <p><strong>Correct Answer:</strong> ${question.correctAnswer}</p>
+                    </div>
+
+                    <div style="margin-top: 1.5rem; padding: 1.5rem; background: white; border-radius: 0.75rem;">
+                        <h4 style="margin-bottom: 1rem;">📖 Explanation</h4>
+                        <p>${question.explanation}</p>
+                        <p style="margin-top: 1rem; font-size: 0.875rem; color: var(--color-neutral);">
+                            <strong>Source:</strong> ${question.reference}
+                        </p>
+                    </div>
+
+                    <button class="btn btn-primary" style="width: 100%; margin-top: 1.5rem;" onclick="nextQuestion()">
+                        ${currentQuestionIndex < 29 ? 'Next Question →' : 'View Results'}
+                    </button>
+                </div>
+            `;
+
+            document.getElementById('questionCard').insertAdjacentHTML('beforeend', feedbackHTML);
+        }
+
+        function nextQuestion() {
+            selectedAnswer = null;
+            currentQuestionIndex++;
+            
+            if (currentQuestionIndex < 30) {
+                displayQuestion();
+            } else {
+                showResults();
+            }
+        }
+
+        function showResults() {
+            document.getElementById('quizScreen').classList.add('hidden');
+            const resultsScreen = document.getElementById('resultsScreen');
+            resultsScreen.classList.remove('hidden');
+            
+            const percentage = Math.round((score / 30) * 100);
+            const passed = score >= 21;
+
+            resultsScreen.innerHTML = `
+                <div class="glass-effect" style="padding: 3rem; text-align: center;">
+                    <div style="font-size: 4rem; margin-bottom: 1rem;">${passed ? '🏆' : '📚'}</div>
+                    <h1 style="font-size: 2.5rem; margin-bottom: 1rem;">${passed ? 'Mastery Achieved!' : 'Review Recommended'}</h1>
+                    <div style="font-size: 4rem; font-weight: 700; color: var(--color-primary-blue); margin: 1rem 0;">
+                        ${percentage}%
+                    </div>
+                    <p style="font-size: 1.25rem; color: var(--color-neutral);">
+                        You scored ${score} out of 30 questions correctly
+                    </p>
+                    <div style="display: inline-block; padding: 1rem 2rem; margin-top: 1rem; border-radius: 2rem; background: ${passed ? 'var(--color-success)' : 'var(--color-warning)'}; color: white; font-weight: 700;">
+                        ${passed ? '✓ PASS' : '⚠ REVIEW NEEDED'}
+                    </div>
+                </div>
+
+                ${failedQuestions.length > 0 ? `
+                    <div class="glass-effect" style="margin-top: 2rem; padding: 2rem; border: 2px solid var(--color-warning);">
+                        <h3>Questions Requiring Review (${failedQuestions.length})</h3>
+                        <button class="btn btn-primary" onclick="exportFailedQuestions()" style="margin: 1rem 0;">
+                            💾 Export Failed Questions
+                        </button>
+                        <div style="display: flex; gap: 1rem; margin: 1rem 0;">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                <input type="radio" name="format" value="markdown" checked> Markdown
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                <input type="radio" name="format" value="json"> JSON
+                            </label>
+                        </div>
+                    </div>
+                ` : ''}
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 2rem;">
+                    <button class="btn btn-primary" onclick="location.reload()">
+                        🔄 Start New Quiz
+                    </button>
+                </div>
+            `;
+        }
+
+        function exportFailedQuestions() {
+            const format = document.querySelector('input[name="format"]:checked').value;
+            const timestamp = new Date().toISOString().split('T')[0];
+            const fileName = `EDIC_Review_${timestamp}.${format === 'markdown' ? 'md' : 'json'}`;
+
+            let content = '';
+            if (format === 'markdown') {
+                content = `# EDIC Quiz Review - ${new Date().toLocaleDateString()}\n\n`;
+                content += `**Score:** ${score}/30 (${Math.round((score/30)*100)}%)\n`;
+                content += `**Files Used:** ${uploadedFiles.map(f => f.name).join(', ')}\n\n`;
+                
+                failedQuestions.forEach(q => {
+                    content += `## Q${q.number} - ${q.topic}\n\n`;
+                    content += `**Context:** ${q.vignette}\n\n`;
+                    content += `**Question:** ${q.questionText}\n\n`;
+                    content += `**Your Answer:** ${q.userAnswer} | **Correct:** ${q.correctAnswer}\n\n`;
+                    content += `---\n\n`;
+                });
+            } else {
+                content = JSON.stringify({
+                    metadata: {
+                        date: new Date().toISOString(),
+                        score: score,
+                        files: uploadedFiles.map(f => f.name),
+                        totalQuestions: 30
+                    },
+                    failedQuestions: failedQuestions
+                }, null, 2);
+            }
+
+            const blob = new Blob([content], { type: format === 'markdown' ? 'text/markdown' : 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('uploadError');
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
+            setTimeout(() => errorDiv.classList.add('hidden'), 5000);
+        }
+
+        function hideError() {
+            document.getElementById('uploadError').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
